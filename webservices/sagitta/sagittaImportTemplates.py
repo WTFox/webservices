@@ -1,4 +1,9 @@
-__author__ = 'afox'
+"""
+    Basic file containing sagitta import templates.
+
+    To be used with passthroughImp or passthroughReq
+
+"""
 
 sagittaMemoTemplate = """
                         <root>

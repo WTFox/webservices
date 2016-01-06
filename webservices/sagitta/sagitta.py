@@ -1,8 +1,6 @@
 # coding: utf-8
 from __future__ import (absolute_import, division, print_function, unicode_literals)
 import logging
-import os
-
 
 import xml.dom.minidom as minidom
 import xml.etree.ElementTree as ET
@@ -20,48 +18,26 @@ logging.getLogger('suds.client').setLevel(logging.CRITICAL)
 class LoginError(Exception): pass
 
 
-class MyPlugin(MessagePlugin):
+class RemoveEmptyElements(MessagePlugin):
     def marshalled(self, context):
         context.envelope = context.envelope.prune()
 
 
-# def sending(self, context):
-#         context.envelope = re.sub('\s+<.*?/>', '', str(context.envelope))
-
-
 class Sagitta(object):
-    """
-        <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ams="http://amsservices.com/">
-           <soapenv:Header>
-              <ams:AuthenticationHeader>
-                 <!--Optional:-->
-                 <ams:Account>Live</ams:Account>
-                 <!--Optional:-->
-                 <ams:Username>afox</ams:Username>
-                 <!--Optional:-->
-                 <ams:Password>JAF1834</ams:Password>
-                 <!--Optional:-->
-                 <ams:Accesscode></ams:Accesscode>
-                 <!--Optional:-->
-                 <ams:Serverpool>websvc</ams:Serverpool>
-                 <!--Optional:-->
-                 <ams:Onlinecode></ams:Onlinecode>
-              </ams:AuthenticationHeader>
-           </soapenv:Header>
-           <soapenv:Body>
-              <ams:rolodexContains>
-                 <!--Optional:-->
-                 <ams:searchCriteria>deeds</ams:searchCriteria>
-              </ams:rolodexContains>
-           </soapenv:Body>
-        </soapenv:Envelope>
-
-        token = self.client.factory.create('SessionIdHeader')
-        token.sessionId = self.sessionID
-        self.client.set_options(soapheaders=token)
-    """
-
     def __init__(self, account='', username='', password='', accessCode='', serverPool='', onlineCode='', wsServer=''):
+        """
+            A suds-jurko wrapper to allow interfacing with Sagitta SOAP services easier.
+            This currently only supports in house installations
+
+        :param account: Usually 'gemdata'.
+        :param username: Sagitta username
+        :param password: Sagitta password
+        :param accessCode: I believe this is used only for hosted Sagitta.
+        :param serverPool: The name of the pool set in your Sagitta IIS box.
+        :param onlineCode: I believe this is used only for hosted Sagitta.
+        :param wsServer: If in-house, name of sagitta web services server.
+        """
+
         self.account = account
         self.username = username
         self.password = password
@@ -74,10 +50,36 @@ class Sagitta(object):
         self.CONTACT_IMPORT_TEMPLATE = "sagitta/sagittaImportTemplates/Contact Import Template.XML"
         self.MEMO_IMPORT_TEMPLATE = "sagitta/sagittaImportTemplates/Memo Import Template.XML"
 
-        self.client = Client(self.TRANSPORTER_WSDL, plugins=[MyPlugin()])
+        self.client = Client(self.TRANSPORTER_WSDL, plugins=[RemoveEmptyElements()])
         self.create_auth_header()
+        return
 
     def create_auth_header(self):
+        """
+            Creates the authentication header to be injected into each request.
+
+            ex:
+                <soapenv:Header>
+                  <ams:AuthenticationHeader>
+                     <!--Optional:-->
+                     <ams:Account></ams:Account>
+                     <!--Optional:-->
+                     <ams:Username></ams:Username>
+                     <!--Optional:-->
+                     <ams:Password></ams:Password>
+                     <!--Optional:-->
+                     <ams:Accesscode></ams:Accesscode>
+                     <!--Optional:-->
+                     <ams:Serverpool></ams:Serverpool>
+                     <!--Optional:-->
+                     <ams:Onlinecode></ams:Onlinecode>
+                  </ams:AuthenticationHeader>
+               </soapenv:Header>
+
+        :return:
+            Returns the header if needed.
+        """
+
         token = self.client.factory.create('AuthenticationHeader')
         token.Account = self.account
         token.Username = self.username
@@ -88,16 +90,20 @@ class Sagitta(object):
         self.client.set_options(soapheaders=token)
         return token
 
-    def logout(self):
-        pass
-
     def create_type(self, type_name):
+        """
+            Creates a complex type of 'type_name'
+
+        :param type_name: a complex type that the wsdl supports
+        :return: the complex type object to be modified
+        """
+
         return self.client.factory.create(type_name)
 
     def list_methods(self):
         """
             prints methods available
-        :return:
+        :return: a list of methods in a python list object if needed.
         """
 
         output = []
@@ -122,6 +128,10 @@ class Sagitta(object):
         return '\n'.join(output)
 
     def get_client(self):
+        """
+            To be used if there is an issue with the Sagitta class 'call' function
+        :return:
+        """
         return self.client
 
     def call(self, func, *args):
@@ -130,13 +140,12 @@ class Sagitta(object):
             to call the method.
 
             Usage:
-                from webservices import BenefitPoint
-                bp = webservices.BenefitPoint(username='you@me.net', password='password')
-                resp = bp.call('getTeamMembers', 1346911)
+                from webservices import Sagitta
+                s = Sagitta(**logins.sagitta)
+                resp = s.call('rolodexStartsWith', 'deed')
 
             Returns:
                 results from method call
-
         """
 
         try:
