@@ -8,6 +8,7 @@ import xml.etree.ElementTree as ET
 import suds
 from suds.plugin import MessagePlugin
 from suds.client import Client
+from suds.sax.text import Raw
 
 from .sagittaImportTemplates import *
 
@@ -21,6 +22,9 @@ class LoginError(Exception): pass
 class RemoveEmptyElements(MessagePlugin):
     def marshalled(self, context):
         context.envelope = context.envelope.prune()
+
+    def sending(self, context):
+        print(context.envelope)
 
 
 class Sagitta(object):
@@ -168,4 +172,7 @@ class Sagitta(object):
         elem = ET.tostring(elem)
         xml = minidom.parseString(elem)
         pretty_xml_as_string = xml.toxml()
-        return pretty_xml_as_string.replace('<?xml version="1.0" ?><root>', '').replace('</root>', '').strip()
+        pretty_xml_as_string = pretty_xml_as_string.replace('<?xml version="1.0" ?><root>', '').replace("</root>", "")
+
+        return Raw(pretty_xml_as_string)
+
