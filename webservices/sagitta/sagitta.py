@@ -186,3 +186,4 @@ class Sagitta(object):
             return xmltodict.parse(ET.tostring(response), process_namespaces=False)['ns0:Envelope']['ns0:Body']['PassThroughReqResponse']
         except:
             return xmltodict.parse(ET.tostring(response), process_namespaces=False)
+
