@@ -1,10 +1,10 @@
 # coding: utf-8
 from __future__ import (absolute_import, division, print_function, unicode_literals)
 import logging
+import html
 
-import xml.dom.minidom as minidom
-import xml.etree.ElementTree as ET
-
+import requests
+import xmltodict
 import suds
 from suds.plugin import MessagePlugin
 from suds.client import Client
@@ -21,6 +21,9 @@ class LoginError(Exception): pass
 class RemoveEmptyElements(MessagePlugin):
     def marshalled(self, context):
         context.envelope = context.envelope.prune()
+
+    def sending(self, context):
+        return context.envelope
 
 
 class Sagitta(object):
@@ -45,12 +48,19 @@ class Sagitta(object):
         self.serverPool = serverPool
         self.onlineCode = onlineCode
 
+        self.loginCreds = dict(
+            account=account,
+            username=username,
+            password=password,
+            accessCode=accessCode,
+            serverPool=serverPool,
+            onlineCode=onlineCode
+        )
+
         self.TRANSPORTER_WSDL = "http://{}/sagittaws/transporter.asmx?wsdl".format(wsServer)
-        self.CLIENT_IMPORT_TEMPLATE = "sagitta/sagittaImportTemplates/Client Import Template.XML"
-        self.CONTACT_IMPORT_TEMPLATE = "sagitta/sagittaImportTemplates/Contact Import Template.XML"
-        self.MEMO_IMPORT_TEMPLATE = "sagitta/sagittaImportTemplates/Memo Import Template.XML"
 
         self.client = Client(self.TRANSPORTER_WSDL, plugins=[RemoveEmptyElements()])
+        self.client.set_options(nosend=True)
         self.create_auth_header()
         return
 
@@ -146,26 +156,33 @@ class Sagitta(object):
 
             Returns:
                 results from method call
+
         """
 
         try:
             if args:
                 resp = getattr(self.client.service, func)(args, )
+
             else:
                 resp = getattr(self.client.service, func)
 
         except suds.WebFault as detail:
             return "ERROR", detail
-
         return resp
 
     def create_template(self, template_name=False):
-        if template_name == 'memo':
-            tree = ET.fromstring(sagittaMemoTemplate)
-            return tree
+        return Template(template_name, **self.loginCreds)
 
-    def prettify_xml(self, elem):
-        elem = ET.tostring(elem)
-        xml = minidom.parseString(elem)
-        pretty_xml_as_string = xml.toxml()
-        return pretty_xml_as_string.replace('<?xml version="1.0" ?><root>', '').replace('</root>', '').strip()
+    def passthrough(self, template_obj):
+        url = self.TRANSPORTER_WSDL
+        headers = {'content-type': 'text/xml'}
+        request = template_obj.full_request
+
+        response = requests.post(url, data=request, headers=headers)
+        unescaped = html.unescape(response.text).replace('<?xml version="1.0"?>', '').replace('http://amsservices.com/', '')
+        response = ET.fromstring(unescaped)
+
+        try:
+            return xmltodict.parse(ET.tostring(response), process_namespaces=False)['ns0:Envelope']['ns0:Body']['PassThroughReqResponse']
+        except:
+            return xmltodict.parse(ET.tostring(response), process_namespaces=False)
