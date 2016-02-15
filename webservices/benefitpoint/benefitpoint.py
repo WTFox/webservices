@@ -60,13 +60,15 @@ class BenefitPoint(object):
 
     """
 
-    SESSION_FILE = os.path.join("c:/", "Temp", "benefitpoint_sessionid.txt")
-
-    if not os.path.exists(SESSION_FILE):
-       with open(SESSION_FILE,"w") as f:
-            f.write('')
+    # SESSION_FILE = os.path.join("c:/", "Temp", "benefitpoint_sessionid.txt")
+    #
+    # if not os.path.exists(SESSION_FILE):
+    #    with open(SESSION_FILE,"w") as f:
+    #         f.write('')
 
     def __init__(self, username='', password=''):
+        self.sessionID = ''
+
         self.LOGIN_WSDL = str('https://www1.benefitpoint.com/aptusConnect/LoginV2.wsdl')
         self.BROKER_CONNECTV4 = str('https://www1.benefitpoint.com/aptusConnect/BrokerConnectV4.wsdl')
 
@@ -75,6 +77,12 @@ class BenefitPoint(object):
 
         self.username = username
         self.password = password
+
+        SESSION_FILE = os.path.join("c:/", "Temp", "benefitpoint_sessionid.txt")
+
+        if not os.path.exists(SESSION_FILE):
+            with open(SESSION_FILE,"w") as f:
+                f.write('')
 
     def verify_login(self):
         ''' Login method to authenticate with Benefit Point.
@@ -103,7 +111,6 @@ class BenefitPoint(object):
 
         else:
             result = self.login_client.service.login(self.username, self.password, )
-
             try:
                 self.sessionID = result["sessionID"]
                 with open(self.SESSION_FILE, 'wt') as file:
