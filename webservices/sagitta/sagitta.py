@@ -187,3 +187,7 @@ class Sagitta(object):
         except:
             return xmltodict.parse(ET.tostring(response), process_namespaces=False)
 
+class AttrDict(dict):
+    def __init__(self, *args, **kwargs):
+        super(AttrDict, self).__init__(*args, **kwargs)
+        self.__dict__ = self
